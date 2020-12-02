@@ -10,7 +10,7 @@ export default function Register(onRegister) {
     const history = useHistory();
     const onSubmit = async () => {
         const result = await apiRegister({ email, firstName, lastName, password });
-        const action = { type: "login", data: result };
+        const action = { type: "login", payload: result };
         dispatch(action);
         history.push("/login");
     };

@@ -1,5 +1,6 @@
 const spicedPg = require("spiced-pg");
-const db = spicedPg("postgres:anna:postgres@localhost:5432/streetart");
+const db = spicedPg(process.env.DB_URL);
+console.log(process.env.DB_URL);
 /**
  * @typedef User
  * @property {string} firstName
@@ -15,6 +16,7 @@ const db = spicedPg("postgres:anna:postgres@localhost:5432/streetart");
  */
 const mapRowToUser = (row, includeHash = false) => {
     let result = {
+        id: row.id,
         firstName: row.first_name,
         lastName: row.last_name,
         email: row.email
@@ -29,7 +31,7 @@ const mapRowToUser = (row, includeHash = false) => {
  * @returns {Promise<User?>}
  */
 exports.findByEmail = async function findByEmail(email) {
-    const { rows } = db.query("SELECT * FROM users WHERE email = $1", [email]);
+    const { rows } = await db.query("SELECT * FROM users WHERE email = $1", [email]);
     if (rows && rows.length === 1) {
         return mapRowToUser(rows[0], true);
     } else {
@@ -50,7 +52,7 @@ exports.findByEmail = async function findByEmail(email) {
  */
 exports.findById = async id => {
     const { rows } = await db.query("SELECT * FROM users WHERE id = $1", [id]);
-    if (rows && rows.length === 0) {
+    if (rows && rows.length === 1) {
         return mapRowToUser(rows[0]);
     } else {
         return null;

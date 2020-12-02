@@ -1,18 +1,20 @@
+const dotenv = require("dotenv");
+dotenv.config();
 const express = require("express");
 const app = express();
 const passport = require("passport");
-const Strategy = passport.Strategy;
-const LocalStrategy = require("passport-local").Strategy;
 const authDb = require("./server/authDb");
 const bcrypt = require("bcrypt");
 const bodyParser = require("body-parser");
-const dotenv = require("dotenv");
-
 const util = require("util");
-
-var cors = require("cors");
-
-dotenv.config();
+const multer = require("multer");
+const uidSafe = require("uid-safe");
+const exifr = require("exifr");
+const db = require("./server/db");
+const path = require("path");
+const { response } = require("express");
+const { upload } = require("./server/s3");
+const { moderationMiddleware } = require("./server/rekognition");
 // auth info https://github.com/passport/express-4.x-local-example/blob/master/server.js
 
 app.use(bodyParser.urlencoded({ extended: true }));
@@ -24,8 +26,6 @@ app.use(
         maxAge: 1000 * 60 * 60 * 24 * 14
     })
 );
-app.use(passport.initialize());
-app.use(passport.session());
 
 // this middleware loads the user at each request if there is a user id
 // associated with session
@@ -45,6 +45,60 @@ app.use(async (req, res, next) => {
     }
 });
 
+// taken from the imageboard example project
+const diskStorage = multer.diskStorage({
+    destination: function (req, file, callback) {
+        callback(null, __dirname + "/upload");
+    },
+    filename: function (req, file, callback) {
+        uidSafe(24).then(function (uid) {
+            file.key = uid;
+            callback(null, uid + path.extname(file.originalname));
+        });
+    }
+});
+
+const uploader = multer({
+    storage: diskStorage,
+    limits: {
+        fileSize: 6 * 1024 * 1024 // 6 * 1024kb = 6MB
+    }
+});
+
+const exifrMiddleware = async (req, res, next) => {
+    let file = req.file;
+    let path = file.path;
+    const parsed = await exifr.parse(path, { gps: true });
+    file.exif = parsed;
+    next();
+};
+
+const requireLoginMiddleware = (req, res, next) => {
+    if (req.user.id) {
+        next();
+    } else {
+        return res.redirect("/login");
+    }
+};
+
+const _uploadPipeline = [
+    requireLoginMiddleware,
+    uploader.single("file"),
+    exifrMiddleware,
+    upload,
+    moderationMiddleware
+];
+app.post("/upload", _uploadPipeline, async (req, resp) => {
+    const { file } = req;
+    const { description } = req.body;
+    let tags = [];
+    if (description) {
+        tags = parseTags(description);
+    }
+    const image = await db.createImage(file, description, req.user.id, tags);
+    image.exif = null;
+    return resp.json(image);
+});
 /**
  * This route logs the user in, and stores the userId in the session,
  * so that the middleware above can load it for every subsequent request.
@@ -91,6 +145,16 @@ app.post("/api/register", async (req, resp) => {
     }
 });
 
+app.get("/api/users/me", async (req, resp) => {
+    let { user } = req;
+    if (req.user) {
+        let result = { ...user, pwHash: undefined };
+        return resp.json(result);
+    } else {
+        return resp.sendStatus(400);
+    }
+});
+
 app.get("/test", (req, resp) => {
     return resp.send("hell yeah!");
 });
@@ -102,3 +166,21 @@ app.get("*", (req, resp) => {
 app.listen(8080, () => {
     console.log("listening on http://localhost:8080");
 });
+
+/**
+ *
+ * @param {string} str
+ * @returns {string[]} the array of tags
+ */
+function parseTags(str) {
+    // found at https://blog.abelotech.com/posts/split-string-into-tokens-javascript/
+    const words = str.split(/\s+/);
+    const tags = [];
+    for (let word of words) {
+        if (word.length > 1 && word[0] === "#") {
+            const tag = word.substr(1);
+            tags.push(tag);
+        }
+    }
+    return tags;
+}

@@ -5,6 +5,7 @@ import { Container } from "react-bootstrap";
 import { BrowserRouter, Route, Link, Switch, Redirect } from "react-router-dom";
 import Login from "./auth/Login";
 import Register from "./auth/Register";
+import Upload from "./images/Upload";
 function App() {
     return (
         <main className="App">
@@ -13,6 +14,7 @@ function App() {
                     <Switch>
                         <Route path="/login" component={() => <Login />} />
                         <Route path="/register" component={() => <Register />} />
+                        <Route path="/upload" component={() => <Upload />} />
                         <Route path="/" component={() => <Redirect to="/register" />} />
                     </Switch>
                 </BrowserRouter>

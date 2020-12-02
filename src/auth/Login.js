@@ -3,14 +3,17 @@ import { useDispatch } from "react-redux";
 import { Row, Col, Form, Button } from "react-bootstrap";
 import { login as apiLogin } from "../apiClient";
 import { useStatefulFields } from "../hooks";
-
+import { useHistory } from "react-router-dom";
 export default function Login({ onLogin }) {
     const [{ email, password }, onInputValueChange] = useStatefulFields();
     const dispatch = useDispatch();
-
+    const history = useHistory();
     const onSubmit = async event => {
-        const result = await apiLogin(email, password);
-        dispatch(result.data);
+        const { data } = await apiLogin(email, password);
+        console.log("logged in", data);
+        const action = { type: "login", payload: data };
+        dispatch(action);
+        history.push("/upload");
     };
 
     return (

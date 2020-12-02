@@ -6,19 +6,33 @@ import reportWebVitals from "./reportWebVitals";
 import { createStore, applyMiddleware } from "redux";
 import { Provider } from "react-redux";
 import { composeWithDevTools } from "redux-devtools-extension";
-import reduxPromise from "redux-promise";
-
 import reducer from "./reducer";
-const store = createStore(reducer, composeWithDevTools(applyMiddleware(reduxPromise)));
+import { loadUser } from "./apiClient";
+import thunkMiddleWare from "redux-thunk";
 
-ReactDOM.render(
-    <Provider store={store}>
-        <React.StrictMode>
-            <App />
-        </React.StrictMode>
-    </Provider>,
-    document.getElementById("root")
-);
+let store;
+(() => {
+    let initialState = {};
+    loadUser()
+        .then(user => {
+            if (user) {
+                initialState.user = user;
+            }
+        })
+        .catch(error => {})
+        .finally(() => {
+            const enhancer = composeWithDevTools(applyMiddleware(thunkMiddleWare));
+            const store = createStore(reducer, initialState, enhancer);
+            ReactDOM.render(
+                <Provider store={store}>
+                    <React.StrictMode>
+                        <App />
+                    </React.StrictMode>
+                </Provider>,
+                document.getElementById("root")
+            );
+        });
+})();
 
 // If you want to start measuring performance in your app, pass a function
 // to log results (for example: reportWebVitals(console.log))
