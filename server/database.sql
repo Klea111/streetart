@@ -13,10 +13,16 @@ create table if not exists images(
     description varchar null,
     latitude float null,
     longitude float null, 
+    -- there is no need to query for specific exif tags beyond latitude and longitude
+    -- so we can just dump everything into a json column. This data could become useful
+    -- later so we do not just throw it away.
     exif json null,
     
 );
 alter table images add column if not exists upload_time timestamp default NOW();
+-- same as with the exif tags: We do not need to search by label, and just 
+-- dropping all of them into a json column is a fast and easy way to quickly
+-- get something running
 alter table images add column if not exists moderation_labels json null;
 
 create table if not exists tags (

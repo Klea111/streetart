@@ -42,7 +42,7 @@ exports.getUrl = key => {
  * s3. Configuration is done by environment args. Set the credentials
  * by setting AWS_SECRET and AWS_KEY, the bucket by AWS_S3_BUCKET
  */
-exports.upload = async (req, res, next) => {
+exports.uploadMiddleware = async (req, res, next) => {
     if (!req.file) {
         console.log("multer failed :-/");
         return res.sendStatus(500);
@@ -50,13 +50,13 @@ exports.upload = async (req, res, next) => {
     const { key, mimetype, size, path, filename } = req.file;
     let extension = filename.substring(filename.length - 4);
     extension = extension.toLowerCase();
-
+    const buffer = fs.readFileSync(path);
     try {
         const request = {
             Bucket: AWS_BUCKET,
             ACL: "public-read",
             Key: "uploads/" + key + extension,
-            Body: fs.createReadStream(path),
+            Body: buffer, //fs.createReadStream(path),
             ContentType: mimetype,
             ContentLength: size
         };

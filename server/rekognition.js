@@ -30,7 +30,7 @@ exports.moderate = async key => {
             }
         })
         .promise();
-    return response.ModerationLabels.map(label => label.Name);
+    return response.ModerationLabels.map(label => [label.ParentName, label.Name].join("/"));
 };
 
 exports.moderationMiddleware = async (req, res, next) => {
@@ -38,7 +38,7 @@ exports.moderationMiddleware = async (req, res, next) => {
         const key = req.file.key;
         const labels = await this.moderate(key);
         if (labels.length > 0) {
-            req.file.moderation = result;
+            req.file.moderation = labels;
         } else {
             req.file.moderation = null;
         }

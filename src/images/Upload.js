@@ -1,14 +1,15 @@
 import { useState, useEffect } from "react";
 import { useDispatch, useSelector, shallowEqual } from "react-redux";
 import { Row, Col, Form, Button, List, ListGroup, CardImg, FormControl } from "react-bootstrap";
-import { loadUser, uploadFiles } from "../apiClient";
-import { useStatefulFields } from "../hooks";
+import { loadUser, uploadFile } from "../apiClient";
+import { useHistory } from "react-router-dom";
 
 export default function Upload() {
     const dispatch = useDispatch();
     const [file, setFile] = useState();
     const [description, setDescription] = useState();
-
+    const [dataUrl, setDataUrl] = useState();
+    const history = useHistory();
     const user = useSelector(state => {
         return state ? state.profile : null;
     }, shallowEqual);
@@ -20,34 +21,25 @@ export default function Upload() {
         })();
     }
 
-    const fileReader = new FileReader();
-    fileReader.onloadend = e => {
-        const blob = e.target.result;
-        const canvas = document.createElement("canvas");
-        const context = canvas.getContext("2d");
-        canvas.width = 600;
-        canvas.height = 600;
-        const imageData = context.createImageData(canvas.width, canvas.height);
-        imageData.data.set(blob);
-        context.putImageData(imageData, 0, 0);
-    };
-
     const submit = async event => {
-        const uploadedFiles = await uploadFiles(file, description);
-        console.log(uploadFiles);
+        const uploadedFile = await uploadFile(file, description);
+        console.log(uploadFile);
+        dispatch({ type: "image-selected", payload: uploadedFile });
+        history.push("/images/" + uploadedFile.id);
     };
 
     const onSelectedFileChanged = event => {
         console.log(event);
         const newFile = event.target.files[0];
         setFile(newFile);
-        fileReader.readAsArrayBuffer(event.target.files[0]);
     };
 
     const onDescriptionChanged = ev => {
         console.log(ev);
         setDescription(ev.target.value);
     };
+
+    const getPreviewImage = () => {};
 
     return (
         <Form>
@@ -69,8 +61,9 @@ export default function Upload() {
                 <Form.Label>Your image</Form.Label>
                 <Form.File accept="image/jpeg" onChange={e => onSelectedFileChanged(e)} />
             </Form.Group>
+            <div>{dataUrl && <img src={() => dataUrl} />}</div>
             <Form.Group controlId="submit-button">
-                <Button variant="primary" onClick={submit}>
+                <Button variant="primary" onClick={submit} disabled={!file}>
                     Submit
                 </Button>
             </Form.Group>
